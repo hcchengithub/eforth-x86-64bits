@@ -1,0 +1,179 @@
+	
+	An eforth Subroutine Threaded Code for 64 bits x86 PC     	   hcchen5600 2011/12/29
+	
+	What is it?
+	
+	    eforth 原本是用 MASM 寫的 x86 16bits DOS 程式。我把它改成 x86 64bits STC。如此一
+	    來 PC BIOS 整個 run time service 都不能用了，所以 keyboard input, display output 
+	    都要從頭寫起，當然也不會有 Operating System. 目前沒有讀寫 disk 的能力，用 floppy 開
+	    機進 eforth64 的過程只有最初一點點靠 BIOS 做，隨後進了 64 bits mode 之後就全都是 
+	    eforth64 自己了。
+
+	    最終結果是個 Bootable floppy image floppy.img with a special MBR boot sector that
+	    enters 64-bits long mode directly, load eforth64 kernel eforth64.bin to 0x100000,
+	    and all forth source code .f files right after it, and then jump to 0x100000 從此
+	    都是 eforth64 的天下了。
+	
+	    eforth64 kernal 'cold' loads forth source code from memory right after itself
+	    then 'quit'.
+	
+	    All console i/o words are defined in forth source so they are necessary while kernel
+	    does not have the ability to communicate with user.
+	
+	Quick Start
+	
+	    解開 eforth64_r20.zip 到某 working folder。執行 run.bat 即可跑出 eforth 64-bits.
+	    敲 words 查看所有的命令， 敲 see swap 看 disassembly 的效果，照下面 「實用的
+	    Debug registers demo」 的 demo 附件玩一遍，15 分鐘以內完成。
+	
+	
+	What's new?
+	   
+	   Vocabulary
+	   ================
+	
+	   Support vocabulary. Forth words 可以分組，稱組別為 vocabulary 或 wordlist. eforth64 因為
+	   supports assembly disassembly 以及 interrupts 致使 words 裡有太多 CPU instructions, ISR 
+	   routines, etc 顯得非常雜亂，user 需要用的 words 埋沒在裡面看不到。有了 vocabulary 就可以
+	   為 words 歸類分組，整理清爽。
+	   
+	   以 words 說明：
+	
+	       words         以前，會按定義的順序列出「所有的 word」混成一大團. 
+	                     現在，分組列出，同一 vocabulary 裡按定義順序同前。
+	                     
+	       words debug   以前，不認得後綴的 arguments.
+	                     現在，只列出 debug vocabulary 裡的 words.
+	   
+	   Vocabulary 可以自訂。 一開始定好的如下 : 
+	   
+	       forth         Forth words
+	       assembler     assembler words
+	       disassembler  disassembler words
+	       hidden        一些 user 可能用不著的 words
+	       isr           interrupt service routines 以及相關的 words
+	       debug         debug 用的 words
+	       console       螢幕、鍵盤 user interface words
+	       mywords       我們自己寫的其他東西
+	   
+	   Vocabulary 的相關 words： 
+	   
+	       常用的有 only , also , previous , order , vocabulary , definitions , vocs
+	       
+	       次要的有 current , context , get-order , set-order 
+	       
+	       詳細用法可以參考 OLPC 的 Forth Lesson 21 課程 
+	       http://wiki.laptop.org/go/Forth_Lesson_21 
+	
+	
+	   實用的 Debug registers demo
+	   ================================
+	
+	   eforth64 裡採用 FigTaiwan 高人 張吉進老師指點的 Tiny assembler / disassembler. 我有一篇
+	   說明: "An introduction to tinyAssembler/disassembler for Forth systems" 放在 FigTaiwan 的
+	   Wiki page 上：
+	   http://www.we-free.net/F2com-wiki/doku.php?id=%E9%81%A9%E7%94%A8%E6%96%BC_assembly_%E7%9A%84%E8%A8%AD%E8%A8%88
+	   
+	   那篇文章的 Section 4 有 demo, 照做就可以體驗一下在 eforth64 上玩 X86 CPU 的 debug registers
+	   以及它的 debug 功能。
+	   
+	   80386 時代就有 CPU 內建的 debug registers DR0~DR7, 因為條件重重，很少有人自己玩過。其實
+	   debug registers 本身很簡單好用。 eforth64 控制整台電腦，interrupt service routines 都是
+	   我們自己用 forth 寫的，forth 本身就是個 console 或 shell，所以一伸手就可以把玩之。
+	   
+	   網文時不時有所修訂，但恐怕有一天會斷鍊。附件 "tinyAssembler-disassembler FigTaiwan Wiki 
+	   version.pdf" 以防萬一。
+	  
+	
+	程式設計師導引
+	
+	    Source code files:  mbr.asm eforth64.asm and ~.f files.
+	    Assembler is NASM v2.09.10
+	
+	    How to compile mbr.asm to mbr.bin ?
+	    ==> Run "make.bat mbr"  (enter)
+	
+	    How to compile eforth64.asm to eforth64.bin ?
+	    ==> Run "make.bat eforth64"  (enter)
+	
+	    How to build floppy.img  ?
+	    ==> Run "build26.bat"   <==== 自動把 mbr.bin  eforth64.bin 以及 forth source files
+	    串成 floppy.img 。
+	    floppy.img can be used by both Bochs or QEMU.
+	
+	    How to debug ?
+	    ==> Run debug.bat to launch floppy.img on Bochs debugger Bochsdbg.exe  for debugging.
+	    ==> "words debug" shows built-in debug features.
+	
+	    How to  run ?
+	    ==> Run.bat   <==== Launch floppy.img on QEMU virtual machine, much faster than Bochs.
+	
+	    把玩時，~.f 可以任意修改，改好跑一下 build26.bat 打包成新的 floppy.img 即可 run.bat 。
+	
+	
+	    Explanations of all files in eforth64_r20.zip
+	    ======================================================================================================================
+	    86ef202.asm            2011/12/23  21:06 PM    51,711  eforth for DOS source code. Important reference.
+	    weforth.asm            2011/05/23  22:57 PM   124,984  eforth for win32 source code. Important STC reference.
+	                                                           
+	    eforth64.asm           2011/12/29  11:02 AM   104,976  eforth64 source code.
+	    MBR.asm                2011/08/13  19:16 PM    11,796  MBR sector source code
+	    00_constants.f         2011/12/26  13:34 PM     2,176  forth high level source code
+	    01_basics_p1.f         2011/12/29  11:09 AM    41,885  forth high level source code
+	    015_disasm_p1.f        2011/12/28  14:48 PM    13,775  forth high level source code
+	    02_assembler.f         2011/12/29  08:16 AM    48,619  forth high level source code
+	    025_disasm_p2.f        2011/12/28  14:48 PM     3,567  forth high level source code
+	    03_codewords.f         2011/12/28  14:50 PM     1,548  forth high level source code
+	    04_console.f           2011/12/28  14:50 PM    11,375  forth high level source code
+	    05_basics_p2.f         2011/12/29  08:42 AM    24,081  forth high level source code
+	    06_ISR.f               2011/12/28  14:53 PM    41,625  forth high level source code
+	    07_basics_p3.f         2011/12/29  09:01 AM     8,161  forth high level source code
+	    08_debug_registers.f   2011/12/28  14:55 PM     1,384  forth high level source code
+	    cfg.bat                2011/11/06  09:57 AM       130  Setup path before being able to make and build.
+	    make.bat               2011/07/19  11:23 AM        35  assembly source code make file
+	    build26.bat            2011/12/11  21:31 PM     1,652  pack eforth64.bin and forth source code files into a floppy image.
+	    run.bat                2011/08/14  09:04 AM     1,133  Run QEMU to start running eforth64.
+	    debug.bat              2011/12/04  07:05 AM       236  http://bochs.sourceforge.net/ Run Bochsdbg.exe to debug eforth64.
+	                                                           
+	    eforth64.bin           2011/12/29  11:07 AM    10,116  assembled from eforth64.asm. My assembler is NASM 2.09.10
+	    eforth64.lst           2011/12/29  11:07 AM   299,986  listing file of eforth64.asm, for debugging reference.
+	    MBR.bin                2011/08/13  19:16 PM       512  MBR sector binary, compiled from MBR.asm
+	    mbr.lst                2011/08/13  19:16 PM    24,707  MBR sector source code listing file.
+	    Track1complement.asm   2011/08/13  21:04 PM       120  Pack floppy image needs this to fill out track1. 
+	    Track1complement.bin   2011/08/13  21:05 PM     8,704  Pack floppy image needs this to fill out track1. 
+	    floppy.img             2011/12/29  11:09 AM 1,474,560  Boot this floppy image to run eforth64. Ok for QEMU and Bochs or any x64 supported virtual PC software.
+	    floppyfill.bat         2011/08/13  21:32 PM       206  Auto generate floppyfill.bin to complete the floppy image
+	    64bits-MBR.bxrc        2011/08/13  22:08 PM     1,885  http://bochs.sourceforge.net/ Bochs simulater config file. If you want to debug by Bochsdbg.exe then this config file FYR.
+	                                                           
+	    qemu-system-x86_64.exe 2010/10/16  10:08 AM 2,909,972  QEMU's thing http://wiki.qemu.org/Index.html    
+	    bios.bin               2010/10/15  00:01 AM   131,072  QEMU's thing http://wiki.qemu.org/Index.html    
+	    fmod.dll               2007/02/07  14:28 PM   162,816  QEMU's thing http://wiki.qemu.org/Index.html    
+	    pxe-e1000.bin          2010/10/15  00:01 AM    72,192  QEMU's thing http://wiki.qemu.org/Index.html    
+	    SDL.dll                2007/03/06  23:34 PM   486,909  QEMU's thing http://wiki.qemu.org/Index.html    
+	    vgabios-cirrus.bin     2010/10/15  00:01 AM    35,840  QEMU's thing http://wiki.qemu.org/Index.html    
+	    ======================================================================================================================
+	    
+	致謝
+	
+	    1. 丁陳老師的 86ef202.asm 原版 source code.
+	       Yap 小葉夫子的 fsharp (weforth.asm) 32bits eforth for Win32 source code.
+	
+	    2. 曾慶潭老師指點的 64 bits 途徑：應直接用 64-bits cell。
+	
+	    3. Yap 老師一句話： eforth 改幾 bits 都很簡單。
+	       eforth 變身只要改前面幾個 code words 就可以了。真的很簡單。
+	   
+	    4. FigTaiwan 網友，「大陸阿志」先生的 64-bits 文章。Long mode tutorials.
+	
+	    5. 張吉進 學長的 tiny assembly/disassembly. 「寫出 assembler 的同時，
+	       disassembler 也完成了。」
+	
+	    6. eforth 的創始人 Bill Muench's bforth 裡的 vocabulary words.
+	       爽哥、曾慶潭老師指點的 vocabulary words.
+	
+	
+	陳厚成 敬呈
+	100.12.29
+
+
+	
